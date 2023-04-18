@@ -3,18 +3,25 @@ from django.db.models import Sum, Count, Q, F, Case, When
 from django.http import HttpResponse, JsonResponse
 from rest_framework.decorators import api_view
 from .models import SalesData, SearchHistory
+from .tasks import generate_excel_file, calculate_top_products
+from rest_framework import status
+from rest_framework.response import Response
+from celery.result import AsyncResult
+
+
+def sales_data(request):
+    top_products = calculate_top_products()
+    return JsonResponse(top_products, safe=False)
 
 
 @api_view(['GET'])
-def sales_data(request):
-    top_products = SalesData.objects.select_related('product_id', 'client_id') \
-                       .values('product_id__name') \
-                       .annotate(total_quantity=Sum('quantity')) \
-                       .order_by('-total_quantity')[:10]
-
-    top_products_list = list(top_products)
-
-    return JsonResponse(top_products_list, safe=False)
+def sales_data_result(request, task_id):
+    result = calculate_top_products.AsyncResult(task_id)
+    if result.ready():
+        top_products_list = result.get()
+        return JsonResponse(top_products_list, safe=False)
+    else:
+        return JsonResponse({'status': 'PENDING'})
 
 
 @api_view(['GET'])
@@ -37,6 +44,17 @@ def top_searched_products(request):
     top_searches_list = list(top_searches)
     # Return the list as a JSON response
     return JsonResponse(top_searches_list, safe=False)
+
+
+def excel_output(query_set):
+    query_set_df = pd.DataFrame.from_records(query_set)
+
+    # Convert the DataFrame to an Excel file
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="excel_output.xlsx"'
+    query_set_df.to_excel(response, index=False)
+
+    return response
 
 
 @api_view(['GET'])

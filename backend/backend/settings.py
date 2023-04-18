@@ -148,3 +148,6 @@ LOGGING = {
 }
 
 CELERY_BROKER_URL = 'redis://redis:6379/0'
+
+
+ALLOWED_HOSTS = ['0.0.0.0']

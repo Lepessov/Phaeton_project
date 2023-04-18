@@ -17,7 +17,7 @@ urlpatterns = [
     path('sales_data_report/', views.sales_data_report),
     path('sales_data_report_excel/', views.sales_data_report_excel),
 
-    path('serched_not_purchased/', views.search_not_purchased_report)
+    path('serched_not_purchased/', views.search_not_purchased_report),
 
 
     # path('conv_rate/', views.search_conversion_report)
